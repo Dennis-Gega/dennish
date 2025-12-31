@@ -1,19 +1,22 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int main() {
 	while (1) {
+		printf("dennish> ");
+
 		char *line = NULL;
 		size_t linecap = 0;
 		ssize_t linelen;
 
-		while ((linelen = getline(&line, &linecap, stdin) > 0)) {
-			if (strcmp(line, "exit\n") == 0)
-				break;
+		linelen = getline(&line, &linecap, stdin);
 
-		}
-
-		break;
+		if (strcmp(line, "exit\n") == 0)
+			exit(0);
+		
+		execv(line, NULL);	
 	}
 
 	return 0;
