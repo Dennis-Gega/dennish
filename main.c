@@ -18,7 +18,8 @@ int main() {
 
 		// parse input into array
 		char *argv[10], **ap = argv;
-		argv[0] = "/bin/";
+		char buf[50] = "/bin/";
+		argv[0] = buf;
 		for (int i = 1; i < 10; ++i) argv[i] = NULL;
 		int argc = 0;
 		while (1) {
@@ -26,7 +27,9 @@ int main() {
 			if (token == NULL || *token == '\n' || *token == '\0')
 				break;
 
-			*ap = token;
+			// append command name to $PATH
+			if (argc == 0) strcat(argv[0], token);
+			else *ap = token;
 			++argc;
 
 			if (ap != &argv[10])
