@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <sys/types.h>
 
 char error_message[30] = "An error has occurred\n";
@@ -19,14 +20,18 @@ int main() {
 
 		// parse input into array
 		char *argv[10], **ap = argv;
-		argv[0] = path;
+		char buf[50];
+		argv[0] = buf;
+		strcpy(argv[0], path);
 
 		for (int i = 1; i < 10; ++i) argv[i] = NULL;
 		int argc = 0;
 		while (1) {
 			char* token = strsep(&line, " \n");
-			if (token == NULL || *token == '\n' || *token == '\0')
+			if (token == NULL)
 				break;
+			else if (*token == '\n' || *token == '\0')
+				continue;
 
 			// append command name to $PATH if command is in there
 			if (argc == 0) {
@@ -41,30 +46,30 @@ int main() {
 			else *ap = token;
 			++argc;
 
-			if (ap != &argv[10])
+			if (ap != &argv[9])
 				++ap;
 		}
 
 		// builtin commands
+		bool is_builtin = false;
 		if (strcmp(argv[0], "exit") == 0) {
 			if (argc != 1) {
 				write(STDERR_FILENO, error_message, strlen(error_message));
 				exit(1);
 			}
 
+			is_builtin = true;
 			exit(0);
 		}
 
 		if (strcmp(argv[0], "cd") == 0) {
-			if (argc != 2) { 
+			if (argc == 1) {
+				chdir(getenv("HOME"));
+			} else if (argc >= 2 || chdir(argv[1]) == -1) { 
 				write(STDERR_FILENO, error_message, strlen(error_message));
 				exit(1);
 			}
-
-			if (chdir(argv[1]) == -1) {
-				write(STDERR_FILENO, error_message, strlen(error_message));
-				exit(1);
-			}
+			is_builtin = true;
 		}
 
 		if (strcmp(argv[0], "path") == 0) {
@@ -73,18 +78,26 @@ int main() {
 				exit(1);
 			}
 
+			is_builtin = true;
 			strcpy(path, argv[1]);
 		}
 
 
-		int rc = fork();
-		if (rc < 0) {
-			fprintf(stderr, "fork failed\n");
-			exit(1);
-		} else if (rc == 0) {
-			execv(argv[0], argv);
-		} else {
-			int rc_wait = wait(NULL);
+		if (!is_builtin) {
+			int rc = fork();
+			if (rc == -1) {
+				write(STDERR_FILENO, error_message, strlen(error_message));
+				exit(1);
+			}
+
+			if (rc < 0) {
+				fprintf(stderr, "fork failed\n");
+				exit(1);
+			} else if (rc == 0) {
+				execv(argv[0], argv);
+			} else {
+				int rc_wait = wait(NULL);
+			}
 		}
 	}
 
