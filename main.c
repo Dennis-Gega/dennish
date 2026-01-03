@@ -10,6 +10,7 @@ char path[50] = "/bin/";
 
 int main() {
 	while (1) {
+		int original_stdout_fd = dup(fileno(stdout));
 		printf("dennish> ");
 
 		// get raw line from stdin
@@ -48,6 +49,15 @@ int main() {
 
 			if (ap != &argv[9])
 				++ap;
+		}
+
+		if (argc > 2 && strcmp(argv[argc - 2], ">") == 0) {
+			if (freopen(argv[argc - 1], "w", stdout) == NULL) {
+				perror("freopen to file failed");
+				return EXIT_FAILURE;
+			}
+
+			argv[argc - 2] = NULL; // ignore the redirect symbol
 		}
 
 		// builtin commands
@@ -97,9 +107,15 @@ int main() {
 				execv(argv[0], argv);
 			} else {
 				int rc_wait = wait(NULL);
+				fflush(stdout);
+				if (dup2(original_stdout_fd, fileno(stdout)) == -1) {
+					write(STDERR_FILENO, error_message, strlen(error_message));
+					exit(1);
+				}
+				close(original_stdout_fd);
 			}
 		}
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
